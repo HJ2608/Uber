@@ -2,6 +2,7 @@ package com.firstapp.uber.repository.driver;
 
 
 import com.firstapp.uber.dto.driver.Driver;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +34,8 @@ public class DriverRepo {
             driver.getLicenseNo(),
             driver.getCabId(),
             driver.getAvgRating(),
-            driver.getRatingCount()
+            driver.getRatingCount(),
+            driver.getIsOnline()
         );
         driverRepository.save(updatedDriver);
         return true;
@@ -44,5 +46,30 @@ public class DriverRepo {
 
         driverRepository.deleteById(id);
         return true;
+    }
+
+    @Transactional
+    public void setOnline(Integer driverId) {
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver not found"));
+
+        driver.setIsOnline(true);
+    }
+
+    @Transactional
+    public void setOffline(Integer driverId) {
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new RuntimeException("Driver not found"));
+
+        driver.setIsOnline(false);
+    }
+
+    @Transactional
+    public void setDriverOnlineStatus(Integer driverId, boolean isOnline) {
+        Driver driver = findById(driverId).orElseThrow(() ->
+                new RuntimeException("Driver not found with id " + driverId)
+        );
+        driver.setIsOnline(isOnline);
+        driverRepository.save(driver);
     }
 }

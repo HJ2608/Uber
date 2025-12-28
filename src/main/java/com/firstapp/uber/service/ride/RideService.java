@@ -7,6 +7,7 @@ import com.firstapp.uber.ride.dto.EtaResponse;
 import com.firstapp.uber.ride.dto.RideCardResponse;
 
 import java.util.List;
+import java.util.Optional;
 
 
 public interface RideService {
@@ -14,6 +15,10 @@ public interface RideService {
     public CreateRideResponse createRide(Integer userId,
                                          double pickupLat, double pickupLng,
                                          double dropLat, double dropLng);
+
+    List<Ride> getPendingRidesForDriver(Integer driverId);
+    Optional<Ride> getCurrentRideForDriver(Integer driverId);
+    public void acceptRide(Integer driverId, Integer rideId);
 
     public boolean startRide(Integer userId, String otpCode);
 

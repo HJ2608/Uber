@@ -7,6 +7,7 @@ public record User(
         String last_name ,
         String mobile_num ,
         String email,
-        String password_hash
+        String password_hash,
+        String role
 ) {
 }

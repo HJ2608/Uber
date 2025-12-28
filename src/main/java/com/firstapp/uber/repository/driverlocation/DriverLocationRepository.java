@@ -29,7 +29,7 @@ public interface DriverLocationRepository extends JpaRepository<DriverLocation, 
         LIMIT 1
         """,
             nativeQuery = true)
-    Optional<Integer> findNearestDriverWithinRadius(
+    List<Integer> findNearestDriverWithinRadius(
             @Param("pickupLat") double pickupLat,
             @Param("pickupLng") double pickupLng,
             @Param("radiusKm") double radiusKm

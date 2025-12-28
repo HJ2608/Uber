@@ -54,23 +54,33 @@ public class RideRepo {
 
     @Transactional
     public Ride assignDriver(Integer rideId, Integer driverId) {
-        List<Status> activeStatuses = List.of(
-                Status.ASSIGNED,
-                Status.ONGOING
-        );
+//        List<Status> activeStatuses = List.of(
+//                Status.ASSIGNED,
+//                Status.ONGOING
+//        );
+//
+//        if (rideRepository.existsByDriverIdAndStatusIn(driverId, activeStatuses)) {
+//            throw new ResponseStatusException(
+//                    HttpStatus.CONFLICT,
+//                    "Driver already has an active ride"
+//            );
+//        }
+//        Ride ride = rideRepository.findById(rideId)
+//                .orElseThrow(() -> new IllegalArgumentException("Ride not found with id: " + rideId));
+//        ride.setDriverId(driverId);
+//        ride.setStatus(Status.ASSIGNED);
 
-        if (rideRepository.existsByDriverIdAndStatusIn(driverId, activeStatuses)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Driver already has an active ride"
-            );
+        int updated = rideRepository.assignDriverIfFree(rideId, driverId);
+
+        if(updated == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ride already accepted by another driver");
         }
-        Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new IllegalArgumentException("Ride not found with id: " + rideId));
-        ride.setDriverId(driverId);
-        ride.setStatus(Status.ASSIGNED);
-        return rideRepository.save(ride);
+        return rideRepository.findById(rideId)
+                .orElseThrow();
+
+        //return rideRepository.save(ride);
     }
+
     @Transactional
     public int startRide(Integer otpId) {
         return rideRepository.startRide(otpId, Status.ONGOING);

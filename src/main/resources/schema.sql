@@ -1,13 +1,16 @@
--- DROP TABLE IF EXISTS rides CASCADE;
--- DROP TABLE IF EXISTS driver_locations CASCADE;
--- DROP TABLE IF EXISTS otps CASCADE;
--- DROP TABLE IF EXISTS users CASCADE;
--- DROP TYPE IF EXISTS otp_purpose;
--- DROP TABLE IF EXISTS drivers CASCADE;
--- DROP TABLE IF EXISTS users CASCADE;
--- DROP TABLE IF EXISTS cabs CASCADE;
+ DROP TABLE IF EXISTS rides CASCADE;
+ DROP TABLE IF EXISTS driver_locations CASCADE;
+ DROP TABLE IF EXISTS otps CASCADE;
+ DROP TABLE IF EXISTS users CASCADE;
+ DROP TYPE IF EXISTS otp_purpose;
+ DROP TABLE IF EXISTS drivers CASCADE;
+ DROP TABLE IF EXISTS users CASCADE;
+ DROP TABLE IF EXISTS cabs CASCADE;
 
 -- DELETE FROM rides WHERE id = 2;
+--ALTER TABLE drivers
+--ADD COLUMN is_online BOOLEAN DEFAULT FALSE;
+
 
 CREATE TABLE IF NOT EXISTS users
 (
@@ -16,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users
     last_name  VARCHAR(250) NOT NULL,
     mobile_num VARCHAR(20)  NOT NULL UNIQUE,
     email      VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'USER'
 );
 
 CREATE TABLE IF NOT EXISTS cabs
@@ -37,7 +41,9 @@ CREATE TABLE IF NOT EXISTS drivers
     license_no     VARCHAR(50)  NOT NULL,
     avg_rating     NUMERIC(3, 2) DEFAULT 0.0,
     rating_count   INT           DEFAULT 0,
-    cab_id         INT          NOT NULL REFERENCES cabs (id)
+    cab_id         INT          NOT NULL REFERENCES cabs (id),
+    user_id        INT UNIQUE REFERENCES users(id),
+    is_online      BOOLEAN DEFAULT FALSE
 );
 
 -- CREATE TYPE otp_purpose AS ENUM ('LOGIN', 'SIGNUP', 'FORGOT_PASSWORD', 'RIDE_START');

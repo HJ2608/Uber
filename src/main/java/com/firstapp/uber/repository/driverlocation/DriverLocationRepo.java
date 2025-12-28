@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,12 +34,11 @@ public class DriverLocationRepo {
         throw new UnsupportedOperationException("Method not implemented");
     }
 
-    public Optional<Integer> findNearestDriverWithinRadius(
+    public List<Integer> findNearbyAvailableDrivers(
             double pickupLat,
-            double pickupLng,
-            double radiusKm
+            double pickupLng
     ) {
-        return repo.findNearestDriverWithinRadius(pickupLat, pickupLng, radiusKm);
+        return repo.findNearbyAvailableDrivers(pickupLat, pickupLng);
     }
 
 

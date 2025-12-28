@@ -1,6 +1,6 @@
 package com.firstapp.uber.service.driver;
 
-import com.firstapp.uber.dto.ride.DriverRequest;
+import com.firstapp.uber.dto.driver.DriverRequest;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;

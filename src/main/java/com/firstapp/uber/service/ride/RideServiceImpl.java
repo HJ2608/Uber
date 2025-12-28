@@ -1,11 +1,10 @@
 package com.firstapp.uber.service.ride;
 
 import com.firstapp.uber.dto.driver.Driver;
+import com.firstapp.uber.dto.driver.DriverRequest;
 import com.firstapp.uber.dto.driverlocation.DriverLocation;
 import com.firstapp.uber.dto.otp.Otp;
-import com.firstapp.uber.dto.ride.CreateRideRequest;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
-import com.firstapp.uber.dto.ride.DriverRequest;
 import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.google.DistanceMatrixResponse;
 import com.firstapp.uber.repository.driver.DriverRepo;
@@ -13,12 +12,15 @@ import com.firstapp.uber.repository.driverlocation.DriverLocationRepo;
 import com.firstapp.uber.repository.ride.RideRepo;
 import com.firstapp.uber.repository.cab.CabRepository;
 import com.firstapp.uber.dto.cab.Cab;
+import com.firstapp.uber.repository.ride.RideRepository;
 import com.firstapp.uber.ride.dto.CabSummary;
 import com.firstapp.uber.ride.dto.DriverSummary;
 import com.firstapp.uber.ride.dto.EtaResponse;
 import com.firstapp.uber.ride.dto.RideCardResponse;
+import com.firstapp.uber.service.driver.DriverNotificationService;
 import com.firstapp.uber.service.google.GoogleMapsService;
 import com.firstapp.uber.service.otp.OtpService;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,19 +38,29 @@ public class RideServiceImpl implements RideService{
     private final DriverLocationRepo driverLocationRepo;
     private final DriverRepo driverRepo;
     private final CabRepository cabRepository;
+    private final DriverNotificationService notificationService;
+    private final RideRepository rideRepository;
+    private final RideRequestCache rideRequestCache;
+
 
     public RideServiceImpl(RideRepo rideRepo,
-                       GoogleMapsService googleMapsService,
-                       OtpService otpService,
-                       DriverLocationRepo driverLocationRepo,
-                       DriverRepo driverRepo,
-                       CabRepository cabRepository) {
+                           GoogleMapsService googleMapsService,
+                           OtpService otpService,
+                           DriverLocationRepo driverLocationRepo,
+                           DriverRepo driverRepo,
+                           CabRepository cabRepository,
+                           DriverNotificationService notificationService ,
+                           RideRepository rideRepository,
+                           RideRequestCache rideRequestCache) {
         this.rideRepo = rideRepo;
         this.googleMapsService = googleMapsService;
         this.otpService = otpService;
         this.driverLocationRepo = driverLocationRepo;
         this.driverRepo = driverRepo;
         this.cabRepository = cabRepository;
+        this.notificationService = notificationService;
+        this.rideRepository = rideRepository;
+        this.rideRequestCache = rideRequestCache;
     }
 
     public CreateRideResponse createRide(Integer userId,
@@ -75,6 +87,11 @@ public class RideServiceImpl implements RideService{
         Integer custId = userId;
         Otp rideOtp = otpService.generateRideStartOtp(custId);
 
+        List<Integer> driverIds = driverLocationRepo.findNearbyAvailableDrivers(
+                pickupLat,
+                pickupLng
+        );
+
         Ride ride =  rideRepo.createRide(
                 userId,
                 pickupLat,
@@ -85,7 +102,21 @@ public class RideServiceImpl implements RideService{
                 rideOtp.getOtpId()
         );
 
-        //DriverRequest driverReq = rideRepo.sendReq()
+        DriverRequest req = new DriverRequest(
+                estimatedFare,
+                pickupLat,
+                pickupLng,
+                dropLat,
+                dropLng
+        );
+
+        System.out.println("Nearby drivers found: " + driverIds);
+
+        rideRequestCache.put(ride.getRideId(), driverIds);
+
+        driverIds.forEach(driverId -> {
+            notificationService.sendRideRequest(driverId, req);
+        });
 
         return new CreateRideResponse(
                 ride.getRideId(),
@@ -107,6 +138,54 @@ public class RideServiceImpl implements RideService{
                 .add(perKm.multiply(distanceKm))
                 .add(perMin.multiply(minutes));
     }
+
+    @Override
+    public List<Ride> getPendingRidesForDriver(Integer driverId) {
+        // TODO: optionally filter by proximity using driver location
+        return rideRepository.findPendingRides();
+    }
+
+    @Override
+    public Optional<Ride> getCurrentRideForDriver(Integer driverId) {
+        return rideRepository.findCurrentRideForDriver(driverId);
+    }
+
+    @Transactional
+    public void acceptRide(Integer driverId, Integer rideId) {
+
+        int updatedRows = rideRepository.assignDriverIfFree(rideId, driverId);
+
+        if (updatedRows == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Ride already taken"
+            );
+        }
+
+        List<Integer> notifiedDrivers = rideRequestCache.get(rideId);
+
+        notificationService.notifyRideTaken(
+                rideId,
+                driverId,
+                notifiedDrivers
+        );
+        rideRequestCache.remove(rideId);
+    }
+
+    public List<Ride> getNearbyRides(Integer driverId) {
+        Driver driver = driverRepo.findById(driverId).orElseThrow();
+
+        // Use driver location and your existing query
+        double lat = driver.getLat();
+        double lng = driver.getLng();
+
+        List<Integer> nearbyDriverIds = rideRepo.findNearbyAvailableDrivers(lat, lng);
+
+        // Only fetch rides for this driver
+        return rideRepo.findAllPendingRidesForDrivers(nearbyDriverIds);
+    }
+
+
     public boolean startRide(Integer userId, String otpCode) {
 
         var match = otpService.consumeRideStartOtp(userId, otpCode);

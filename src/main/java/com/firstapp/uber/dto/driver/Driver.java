@@ -27,4 +27,6 @@ public class Driver {
     Double avgRating;
     @Column(name = "ratingCount")
     Integer ratingCount;
+    @Column(name="is_online")
+    Boolean isOnline;
 }

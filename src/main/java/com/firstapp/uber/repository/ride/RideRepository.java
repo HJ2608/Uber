@@ -57,9 +57,47 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
     SET r.paymentStatus = 'SUCCESS',
         r.paymentMethod = :method
     WHERE r.rideId = :rideId
-""")
+    """)
     int updatePayment(Integer rideId, String method);
+
+    @Modifying
+    @Query("""
+    UPDATE Ride r
+    SET r.driverId = :driverId,
+    r.status = 'ASSIGNED'
+    WHERE r.rideId = :rideId
+    AND r.driverId IS NULL
+    AND r.status = 'REQUESTED'
+    """)
+    int assignDriverIfFree(@Param("rideId") Integer rideId,
+                           @Param("driverId") Integer driverId);
+
+    @Modifying
+    @Transactional
+    @Query("""
+    UPDATE Ride r
+    SET r.driverId = :driverId,
+    r.status = 'ASSIGNED'
+    WHERE r.rideId = :rideId
+    AND r.status = 'REQUESTED'
+    """)
+    int tryAssignDriver(
+            @Param("rideId") Integer rideId,
+            @Param("driverId") Integer driverId
+    );
+
 
     boolean existsByDriverIdAndStatusIn(Integer driverId, List<Status> statuses);
 
+    @Query("""
+        SELECT r FROM Ride r 
+        WHERE r.status = 'REQUESTED'
+        """)
+    List<Ride> findPendingRides();
+
+    @Query("""
+        SELECT r FROM Ride r 
+        WHERE r.driverId = :driverId AND r.status IN ('ASSIGNED', 'ONGOING')
+    """)
+    Optional<Ride> findCurrentRideForDriver(@Param("driverId") Integer driverId);
 }

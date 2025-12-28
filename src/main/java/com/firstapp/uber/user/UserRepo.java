@@ -1,6 +1,6 @@
 package com.firstapp.uber.user;
 
-import model.User;;
+import model.User;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 

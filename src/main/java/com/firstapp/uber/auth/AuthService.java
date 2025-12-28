@@ -41,7 +41,8 @@ public class AuthService {
                 req.lastName(),
                 req.mobileNum(),
                 req.email(),
-                hash
+                hash,
+                req.role()
         );
 
         repo.create(user);
@@ -55,7 +56,8 @@ public class AuthService {
                 created.first_name(),
                 created.last_name(),
                 created.mobile_num(),
-                created.email()
+                created.email(),
+                created.role()
         );
     }
 

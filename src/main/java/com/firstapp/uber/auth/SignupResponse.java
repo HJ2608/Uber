@@ -5,5 +5,6 @@ public record SignupResponse (
         String firstName,
         String lastName,
         String mobileNum,
-        String email
+        String email,
+        String role
 ){ }
