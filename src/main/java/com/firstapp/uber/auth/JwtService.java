@@ -1,10 +1,14 @@
 package com.firstapp.uber.auth;
 
+import com.firstapp.uber.user.UserRepo;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import model.User;
+import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -12,12 +16,19 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    private final UserRepo userRepo;
+
+    public JwtService(UserRepo userRepo) {
+        this.userRepo = userRepo;
+    }
 
     @Value("${jwt.secret_key}")
     private String secretKey;
@@ -75,6 +86,38 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public Authentication authenticate(String token) {
+
+        System.out.println("Inside authenticate");
+        if (!isTokenValid(token)) {
+            throw new RuntimeException("Invalid or expired JWT");
+        }
+        System.out.println("Inside authenticate token is valid");
+
+        Integer userIdInt = extractUserId(token);
+        Long userIdLng = userIdInt.longValue();
+
+        if (userIdInt == null) {
+            throw new RuntimeException("UserId missing in JWT");
+        }
+        System.out.println("Inside authenticate UserId is found in JWT");
+        System.out.println("Inside authenticate userId is:" + userIdLng);
+
+
+        User user = userRepo.findById(userIdLng)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        System.out.println("Inside authenticate User is found in DB");
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+        System.out.println("Inside authenticate CustomUserDetails is made");
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
     }
 
 }

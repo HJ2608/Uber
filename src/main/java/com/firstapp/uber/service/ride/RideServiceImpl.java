@@ -2,6 +2,8 @@ package com.firstapp.uber.service.ride;
 
 import com.firstapp.uber.dto.driver.Driver;
 import com.firstapp.uber.dto.driver.DriverRequest;
+import com.firstapp.uber.dto.driver.DriverResponse;
+import com.firstapp.uber.dto.driverledger.DriverLedger;
 import com.firstapp.uber.dto.driverlocation.DriverLocation;
 import com.firstapp.uber.dto.otp.Otp;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
@@ -18,9 +20,12 @@ import com.firstapp.uber.ride.dto.DriverSummary;
 import com.firstapp.uber.ride.dto.EtaResponse;
 import com.firstapp.uber.ride.dto.RideCardResponse;
 import com.firstapp.uber.service.driver.DriverNotificationService;
+import com.firstapp.uber.service.driverledger.DriverLedgerService;
 import com.firstapp.uber.service.google.GoogleMapsService;
 import com.firstapp.uber.service.otp.OtpService;
+import com.firstapp.uber.websocket.registry.WebSocketSessionRegistry;
 import jakarta.transaction.Transactional;
+import model.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,7 +46,8 @@ public class RideServiceImpl implements RideService{
     private final DriverNotificationService notificationService;
     private final RideRepository rideRepository;
     private final RideRequestCache rideRequestCache;
-
+    private final WebSocketSessionRegistry  webSocketSessionRegistry;
+    private final DriverLedgerService  driverLedgerService;
 
     public RideServiceImpl(RideRepo rideRepo,
                            GoogleMapsService googleMapsService,
@@ -51,7 +57,10 @@ public class RideServiceImpl implements RideService{
                            CabRepository cabRepository,
                            DriverNotificationService notificationService ,
                            RideRepository rideRepository,
-                           RideRequestCache rideRequestCache) {
+                           RideRequestCache rideRequestCache,
+                           WebSocketSessionRegistry webSocketSessionRegistry,
+                           DriverLedgerService driverLedgerService) {
+
         this.rideRepo = rideRepo;
         this.googleMapsService = googleMapsService;
         this.otpService = otpService;
@@ -61,6 +70,8 @@ public class RideServiceImpl implements RideService{
         this.notificationService = notificationService;
         this.rideRepository = rideRepository;
         this.rideRequestCache = rideRequestCache;
+        this.webSocketSessionRegistry = webSocketSessionRegistry;
+        this.driverLedgerService = driverLedgerService;
     }
 
     public CreateRideResponse createRide(Integer userId,
@@ -115,7 +126,10 @@ public class RideServiceImpl implements RideService{
         rideRequestCache.put(ride.getRideId(), driverIds);
 
         driverIds.forEach(driverId -> {
-            notificationService.sendRideRequest(driverId, req);
+            if (webSocketSessionRegistry.isOnline(driverId)) {
+                rideRequestCache.addSubscriber(ride.getRideId(), driverId);
+                notificationService.sendRideRequest(driverId, req);
+            }
         });
 
         return new CreateRideResponse(
@@ -125,6 +139,9 @@ public class RideServiceImpl implements RideService{
         );
     }
     private BigDecimal calculateFare(long distanceMeters, long durationSeconds) {
+
+
+
         BigDecimal baseFare = new BigDecimal("30.00");
         BigDecimal perKm = new BigDecimal("10.00");
         BigDecimal perMin = new BigDecimal("2.00");
@@ -162,28 +179,36 @@ public class RideServiceImpl implements RideService{
             );
         }
 
-        List<Integer> notifiedDrivers = rideRequestCache.get(rideId);
+        List<Integer> subscribedDrivers = rideRequestCache.get(rideId);
 
         notificationService.notifyRideTaken(
                 rideId,
-                driverId,
-                notifiedDrivers
+                driverId
         );
         rideRequestCache.remove(rideId);
     }
 
-    public List<Ride> getNearbyRides(Integer driverId) {
-        Driver driver = driverRepo.findById(driverId).orElseThrow();
-
-        // Use driver location and your existing query
-        double lat = driver.getLat();
-        double lng = driver.getLng();
-
-        List<Integer> nearbyDriverIds = rideRepo.findNearbyAvailableDrivers(lat, lng);
-
-        // Only fetch rides for this driver
-        return rideRepo.findAllPendingRidesForDrivers(nearbyDriverIds);
+    public void handleDriverResponse(DriverResponse driverResponse, Integer driverId) {
+        try {
+            Ride ride = assignDriver(driverResponse.rideId(), driverId);
+            notificationService.notifyRideAssignment(ride, driverId);
+        } catch (Exception e) {
+            notificationService.notifyRideAssignmentFailed(driverId);
+        }
     }
+
+//    public List<Ride> getNearbyRides(Integer driverId) {
+//        Driver driver = driverRepo.findById(driverId).orElseThrow();
+//
+//        // Use driver location and your existing query
+//        double lat = driver.getLat();
+//        double lng = driver.getLng();
+//
+//        List<Integer> nearbyDriverIds = rideRepo.findNearbyAvailableDrivers(lat, lng);
+//
+//        // Only fetch rides for this driver
+//        return rideRepo.findAllPendingRidesForDrivers(nearbyDriverIds);
+//    }
 
 
     public boolean startRide(Integer userId, String otpCode) {
@@ -301,7 +326,13 @@ public class RideServiceImpl implements RideService{
                         HttpStatus.NOT_FOUND, "No active ride for this user"));
     }
     public Ride markPaymentSuccess(Integer rideId, String method) {
-        return rideRepo.updatePayment(rideId, method);
+        Ride ride = rideRepo.updatePayment(rideId, method);
+        ride.setStatus(Status.COMPLETED);
+        rideRepository.save(ride);
+
+        driverLedgerService.createLedgerEntry(ride);
+
+        return ride;
     }
 
     public RideCardResponse getRideCard(Integer rideId) {
@@ -362,5 +393,11 @@ public class RideServiceImpl implements RideService{
 
     public List<Ride> getAllRides() {
         return rideRepo.findAll();
+    }
+
+    public Ride getActiveRideForDriver(Integer driverId) {
+        return rideRepo.getCurrentRideForDriver(driverId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "No active ride for this driver"));
     }
 }

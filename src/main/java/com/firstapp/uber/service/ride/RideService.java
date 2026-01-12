@@ -1,5 +1,6 @@
 package com.firstapp.uber.service.ride;
 
+import com.firstapp.uber.dto.driver.DriverResponse;
 import com.firstapp.uber.dto.ride.CreateRideRequest;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
 import com.firstapp.uber.dto.ride.Ride;
@@ -19,6 +20,8 @@ public interface RideService {
     List<Ride> getPendingRidesForDriver(Integer driverId);
     Optional<Ride> getCurrentRideForDriver(Integer driverId);
     public void acceptRide(Integer driverId, Integer rideId);
+
+    public void handleDriverResponse(DriverResponse driverResponse, Integer driverId);
 
     public boolean startRide(Integer userId, String otpCode);
 

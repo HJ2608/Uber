@@ -1,10 +1,12 @@
 package com.firstapp.uber.dto.driver;
 
+import com.firstapp.uber.dto.user.UserEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import model.DriverStatus;
 
 @Entity
 @Table(name = "drivers")
@@ -27,6 +29,10 @@ public class Driver {
     Double avgRating;
     @Column(name = "ratingCount")
     Integer ratingCount;
+    @Enumerated(EnumType.STRING)
     @Column(name="is_online")
-    Boolean isOnline;
+    DriverStatus isOnline;
+    @OneToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "id", unique = true)
+    private UserEntity user;
 }

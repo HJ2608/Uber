@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/geo/**").permitAll()
                         .requestMatchers("/CRUD/**").permitAll()
 
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/rides/**").permitAll()
                         .requestMatchers("/api/driver-location/**").permitAll()
                         .requestMatchers("/drivers/**").permitAll()

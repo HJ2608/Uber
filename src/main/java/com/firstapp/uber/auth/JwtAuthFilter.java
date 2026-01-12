@@ -74,9 +74,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             if (user != null) {
 
+                CustomUserDetails userDetails = new CustomUserDetails(user);
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                                user, // principal (you can make a custom UserDetails later)
+                                userDetails,
                                 null,
                                 Collections.emptyList()
                         );

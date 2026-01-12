@@ -42,9 +42,10 @@ public interface DriverLocationRepository extends JpaRepository<DriverLocation, 
         JOIN driver_locations dl ON dl.driver_id = d.id
         LEFT JOIN rides r
             ON r.driver_id = d.id
-            AND r.status IN ('ACCEPTED','STARTED')
+            AND r.status IN ('ASSIGNED','ONGOING','WAITING')
         WHERE c.is_active = TRUE
           AND r.id IS NULL
+          AND d.is_online = 'ONLINE'
           AND ST_DWithin(
               ST_MakePoint(dl.lng, dl.lat)::geography,
               ST_MakePoint(:pickupLng, :pickupLat)::geography,

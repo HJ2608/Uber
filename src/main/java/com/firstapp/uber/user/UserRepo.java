@@ -22,22 +22,23 @@ public class UserRepo {
                 .list();
     }
     public Optional<User> findById(Long id){
-        return jdbc.sql("SELECT * FROM users WHERE user_id = :id")
+        return jdbc.sql("SELECT * FROM users WHERE id = :id")
                 .param("id",id)
                 .query(User.class)
                 .optional();
     }
     public boolean create(User user){
         jdbc.sql("""
-                    INSERT INTO users (first_name, last_name, mobile_num, email,password_hash) 
-                    VALUES (:first_name, :last_name, :mobile_num, :email, :password_hash) 
+                    INSERT INTO users (first_name, last_name, mobile_num, email,password_hash,role) 
+                    VALUES (:first_name, :last_name, :mobile_num, :email, :password_hash,:role) 
                     """)
                 .params(Map.of(
                         "first_name", user.first_name(),
                         "last_name", user.last_name(),
                         "mobile_num", user.mobile_num(),
                         "email", user.email(),
-                        "password_hash", user.password_hash()
+                        "password_hash", user.password_hash(),
+                        "role", user.role()
                 ))
                 .update();
 
@@ -47,7 +48,7 @@ public class UserRepo {
         jdbc.sql("""
                     UPDATE users 
                     SET(first_name, last_name,mobile_num,email,password_hash) = (:first_name, :last_name, :mobile_num, :email, :password_hash)
-                    WHERE user_id = :id
+                    WHERE id = :id
                     """)
                 .params(Map.of(
                         "first_name",user.first_name(),
@@ -62,7 +63,7 @@ public class UserRepo {
     }
 
     public boolean delete(Integer id){
-        jdbc.sql("DELETE FROM users WHERE user_id = :id")
+        jdbc.sql("DELETE FROM users WHERE id = :id")
                 .param("id",id)
                 .update();
         return true;

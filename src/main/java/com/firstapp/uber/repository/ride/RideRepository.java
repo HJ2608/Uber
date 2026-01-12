@@ -50,6 +50,9 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
             List<String> statuses
     );
 
+    Optional<Ride> findActiveRideByDriverId(Integer driverId);
+
+
     @Modifying
     @Transactional
     @Query("""
@@ -60,15 +63,52 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
     """)
     int updatePayment(Integer rideId, String method);
 
+
+//    UPDATE Ride r
+//    SET r.driverId = :driverId,
+//    r.status = model.Status.ASSIGNED
+//    WHERE r.rideId = :rideId
+//    AND r.driverId IS NULL
+//    AND r.status = model.Status.REQUESTED
+//    AND EXISTS (
+//            SELECT 1 FROM Driver d
+//                    JOIN d.cab c
+//                    WHERE d.id = :driverId
+//                    AND d.status = model.DriverStatus.ONLINE
+//                    AND c.isActive = true
+//                    AND NOT EXISTS (
+//                    SELECT 1 FROM Ride r2
+//                    WHERE r2.driverId = d.id
+//                    AND r2.status IN (
+//                    model.Status.ASSIGNED,
+//            model.Status.ONGOING,
+//            model.Status.WAITING
+//            )
+//                    )
+//                            )
     @Modifying
-    @Query("""
-    UPDATE Ride r
-    SET r.driverId = :driverId,
-    r.status = 'ASSIGNED'
-    WHERE r.rideId = :rideId
-    AND r.driverId IS NULL
-    AND r.status = 'REQUESTED'
-    """)
+    @Query(value = """
+            UPDATE rides r
+                        SET r.driver_id = :driverId,
+                        r.status = 'ASSIGNED'
+                        WHERE r.id = :rideId
+                        AND r.driver_id IS NULL
+                        AND r.status = 'REQUESTED'
+                        AND EXISTS (
+                                SELECT 1
+                                        FROM drivers d
+                                        JOIN cabs c ON d.cab_id = c.id
+                                        WHERE d.id = :driverId
+                                        AND d.is_online = 'ONLINE'
+                                        AND c.is_active = true
+                                        AND NOT EXISTS (
+                                        SELECT 1
+                                        FROM rides r2
+                                        WHERE r2.driver_id = d.id
+                                        AND r2.status IN ('ASSIGNED', 'ONGOING', 'WAITING')
+                                )
+                        )
+    """, nativeQuery = true)
     int assignDriverIfFree(@Param("rideId") Integer rideId,
                            @Param("driverId") Integer driverId);
 

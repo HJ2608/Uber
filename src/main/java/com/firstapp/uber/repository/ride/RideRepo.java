@@ -145,5 +145,9 @@ public class RideRepo {
         return rideRepository.findAll();
     }
 
+    public Optional<Ride> getCurrentRideForDriver(Integer driverId) {
+        return rideRepository.findCurrentRideForDriver(driverId);
+    }
+
 
 }

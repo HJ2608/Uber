@@ -1,5 +1,6 @@
 package com.firstapp.uber.service.ride;
 
+import com.sun.source.doctree.SeeTree;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -8,17 +9,28 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RideRequestCache {
 
-    private final Map<Integer, List<Integer>> rideToDrivers = new ConcurrentHashMap<>();
+    private final Map<Integer, Set<Integer>> rideSubscribers = new ConcurrentHashMap<>();
+
+    public void addSubscriber(Integer rideId, Integer driverId) {
+        rideSubscribers
+                .computeIfAbsent(rideId, k -> ConcurrentHashMap.newKeySet())
+                .add(driverId);
+    }
 
     public void put(Integer rideId, List<Integer> driverIds) {
-        rideToDrivers.put(rideId, driverIds);
+        rideSubscribers.put(rideId,
+                ConcurrentHashMap.newKeySet(driverIds.size())
+        );
+        rideSubscribers.get(rideId).addAll(driverIds);
     }
 
     public List<Integer> get(Integer rideId) {
-        return rideToDrivers.getOrDefault(rideId, List.of());
+        return new ArrayList<>(
+                rideSubscribers.getOrDefault(rideId, Set.of())
+        );
     }
 
     public void remove(Integer rideId) {
-        rideToDrivers.remove(rideId);
+        rideSubscribers.remove(rideId);
     }
 }

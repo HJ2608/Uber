@@ -1,11 +1,11 @@
- DROP TABLE IF EXISTS rides CASCADE;
- DROP TABLE IF EXISTS driver_locations CASCADE;
- DROP TABLE IF EXISTS otps CASCADE;
- DROP TABLE IF EXISTS users CASCADE;
- DROP TYPE IF EXISTS otp_purpose;
- DROP TABLE IF EXISTS drivers CASCADE;
- DROP TABLE IF EXISTS users CASCADE;
- DROP TABLE IF EXISTS cabs CASCADE;
+-- DROP TABLE IF EXISTS rides CASCADE;
+-- DROP TABLE IF EXISTS driver_locations CASCADE;
+-- DROP TABLE IF EXISTS otps CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
+-- DROP TYPE IF EXISTS otp_purpose;
+-- DROP TABLE IF EXISTS drivers CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
+-- DROP TABLE IF EXISTS cabs CASCADE;
 
 -- DELETE FROM rides WHERE id = 2;
 --ALTER TABLE drivers
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS drivers
     rating_count   INT           DEFAULT 0,
     cab_id         INT          NOT NULL REFERENCES cabs (id),
     user_id        INT UNIQUE REFERENCES users(id),
-    is_online      BOOLEAN DEFAULT FALSE
+    is_online      VARCHAR(20) DEFAULT 'OFFLINE'
 );
 
 -- CREATE TYPE otp_purpose AS ENUM ('LOGIN', 'SIGNUP', 'FORGOT_PASSWORD', 'RIDE_START');
@@ -95,4 +95,19 @@ CREATE TABLE IF NOT EXISTS rides
         FOREIGN KEY (driver_id) REFERENCES drivers (id),
     CONSTRAINT fk_otp_id
         FOREIGN KEY (otp_id) REFERENCES otps (id)
+);
+
+CREATE TABLE  IF NOT EXISTS driver_ledger (
+    id SERIAL PRIMARY KEY,
+
+    driver_id INT NOT NULL,
+    ride_id INT NOT NULL,
+
+    total_fare NUMERIC(10,2) NOT NULL,
+    driver_cut NUMERIC(10,2) NOT NULL,
+    company_cut NUMERIC(10,2) NOT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE (ride_id)
 );

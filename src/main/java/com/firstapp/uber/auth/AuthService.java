@@ -81,7 +81,8 @@ public class AuthService {
                 user.first_name(),
                 user.last_name(),
                 user.mobile_num(),
-                user.email()
+                user.email(),
+                user.role()
         );
     }
 }
