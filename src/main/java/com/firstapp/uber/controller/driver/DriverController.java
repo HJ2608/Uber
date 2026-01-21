@@ -6,8 +6,9 @@ import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.repository.driver.DriverRepo;
 import com.firstapp.uber.dto.driver.Driver;
 import com.firstapp.uber.repository.driverlocation.DriverLocationRepo;
+import com.firstapp.uber.service.driver.DriverContextService;
+import com.firstapp.uber.service.driver.DriverService;
 import com.firstapp.uber.service.ride.RideService;
-import com.firstapp.uber.service.ride.RideServiceImpl;
 import model.DriverStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,11 +23,13 @@ public class DriverController {
     private final DriverRepo repo;
     private final RideService rideService;
     private final DriverLocationRepo driverLocationRepo;
+    private final DriverService driverService;
 
-    public DriverController(DriverRepo repo, RideService rideService,  DriverLocationRepo driverLocationRepo) {
+    public DriverController(DriverRepo repo, RideService rideService,  DriverLocationRepo driverLocationRepo,DriverService driverService) {
         this.repo = repo;
         this.rideService = rideService;
         this.driverLocationRepo = driverLocationRepo;
+        this.driverService = driverService;
     }
     @GetMapping
     public List<Driver> getAllDriver(){
@@ -108,6 +111,13 @@ public class DriverController {
                 "currentRide", currentRide.orElse(null),
                 "nearbyRides", nearbyRides
         ));
+    }
+
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<Integer> getDriverByUserId(@PathVariable Integer userId) {
+        Integer driverId = driverService.findDriverIdByUserId(userId);
+        if (driverId == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(driverId);
     }
 
 }

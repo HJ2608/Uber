@@ -10,7 +10,10 @@ import com.firstapp.uber.user.UserRepo;
 import jakarta.transaction.Transactional;
 import model.DriverStatus;
 import model.User;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -105,11 +108,11 @@ public class DriverRepo {
     }
 
     @Transactional
-    public void updateDriverStatus(Integer driverId, DriverStatus isOnline) {
+    public void updateDriverStatus(Integer driverId, DriverStatus status) {
         Driver driver = findById(driverId).orElseThrow(() ->
-                new RuntimeException("Driver not found with id " + driverId)
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found")
         );
-        driver.setIsOnline(isOnline);
+        driver.setIsOnline(status);
         driverRepository.save(driver);
     }
 
