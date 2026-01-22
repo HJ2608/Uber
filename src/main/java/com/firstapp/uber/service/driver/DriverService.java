@@ -17,7 +17,7 @@ public class DriverService {
     }
 
     public Integer findDriverIdByUserId(Integer userId) {
-        return driverRepository.findDriverByUserId(userId)
+        return driverRepository.findByUser_Id(userId)
                 .map(Driver::getId)
                 .orElse(null);
     }

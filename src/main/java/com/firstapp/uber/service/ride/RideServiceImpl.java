@@ -1,5 +1,6 @@
 package com.firstapp.uber.service.ride;
 
+import com.firstapp.uber.config.KafkaProducerConfig;
 import com.firstapp.uber.dto.driver.Driver;
 import com.firstapp.uber.dto.driver.DriverRequest;
 import com.firstapp.uber.dto.driver.DriverResponse;
@@ -7,9 +8,12 @@ import com.firstapp.uber.dto.driverledger.DriverLedger;
 import com.firstapp.uber.dto.driverlocation.DriverLocation;
 import com.firstapp.uber.dto.otp.Otp;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
+import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
 import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.google.DistanceMatrixResponse;
 import com.firstapp.uber.repository.driver.DriverRepo;
+import com.firstapp.uber.repository.driver.DriverRepository;
+import com.firstapp.uber.repository.driverlocation.DriverLocationRedisRepo;
 import com.firstapp.uber.repository.driverlocation.DriverLocationRepo;
 import com.firstapp.uber.repository.ride.RideRepo;
 import com.firstapp.uber.repository.cab.CabRepository;
@@ -25,8 +29,10 @@ import com.firstapp.uber.service.google.GoogleMapsService;
 import com.firstapp.uber.service.otp.OtpService;
 import com.firstapp.uber.websocket.registry.WebSocketSessionRegistry;
 import jakarta.transaction.Transactional;
+import model.PaymentStatus;
 import model.Status;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -48,6 +54,10 @@ public class RideServiceImpl implements RideService{
     private final RideRequestCache rideRequestCache;
     private final WebSocketSessionRegistry  webSocketSessionRegistry;
     private final DriverLedgerService  driverLedgerService;
+    private final DriverLocationRedisRepo  redisRepo;
+    private final DriverRepository driverRepository;
+    private final PaymentProducer paymentProducer;
+    private final KafkaTemplate<String, PaymentSuccessEvent> kafkaTemplate;
 
     public RideServiceImpl(RideRepo rideRepo,
                            GoogleMapsService googleMapsService,
@@ -59,7 +69,11 @@ public class RideServiceImpl implements RideService{
                            RideRepository rideRepository,
                            RideRequestCache rideRequestCache,
                            WebSocketSessionRegistry webSocketSessionRegistry,
-                           DriverLedgerService driverLedgerService) {
+                           DriverLedgerService driverLedgerService,
+                           DriverLocationRedisRepo redisRepo,
+                           DriverRepository driverRepository,
+                           PaymentProducer paymentProducer,
+                           KafkaTemplate<String, PaymentSuccessEvent> kafkaTemplate) {
 
         this.rideRepo = rideRepo;
         this.googleMapsService = googleMapsService;
@@ -72,6 +86,10 @@ public class RideServiceImpl implements RideService{
         this.rideRequestCache = rideRequestCache;
         this.webSocketSessionRegistry = webSocketSessionRegistry;
         this.driverLedgerService = driverLedgerService;
+        this.redisRepo = redisRepo;
+        this.driverRepository = driverRepository;
+        this.paymentProducer = paymentProducer;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public CreateRideResponse createRide(Integer userId,
@@ -98,10 +116,11 @@ public class RideServiceImpl implements RideService{
         Integer custId = userId;
         Otp rideOtp = otpService.generateRideStartOtp(custId);
 
-        List<Integer> driverIds = driverLocationRepo.findNearbyAvailableDrivers(
-                pickupLat,
-                pickupLng
-        );
+        List<Integer> candidateIds = redisRepo.findNearestWithinKm(pickupLat, pickupLng, 3.0, 10);
+
+        List<Integer> driverIds = candidateIds.isEmpty()
+                ? List.of()
+                : driverRepository.filterAvailableFromCandidates(candidateIds.toArray(new Integer[0]));
 
         Ride ride =  rideRepo.createRide(
                 userId,
@@ -126,6 +145,8 @@ public class RideServiceImpl implements RideService{
         rideRequestCache.put(ride.getRideId(), driverIds);
 
         driverIds.forEach(driverId -> {
+            System.out.println("Checking WS online for driverId=" + driverId
+                    + " -> " + webSocketSessionRegistry.isOnline(driverId));
             if (webSocketSessionRegistry.isOnline(driverId)) {
                 rideRequestCache.addSubscriber(ride.getRideId(), driverId);
                 notificationService.sendRideRequest(driverId, req);
@@ -242,7 +263,7 @@ public class RideServiceImpl implements RideService{
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Ride not found"));
 
-        if (!"SUCCESS".equalsIgnoreCase(ride.getPaymentStatus())) {
+        if (!PaymentStatus.COMPLETED.equals(ride.getPaymentStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Payment not completed");
         }
@@ -326,13 +347,14 @@ public class RideServiceImpl implements RideService{
                         HttpStatus.NOT_FOUND, "No active ride for this user"));
     }
     public Ride markPaymentSuccess(Integer rideId, String method) {
-        Ride ride = rideRepo.updatePayment(rideId, method);
-        ride.setStatus(Status.COMPLETED);
-        rideRepository.save(ride);
-
-        driverLedgerService.createLedgerEntry(ride);
-
-        return ride;
+//        Ride ride = rideRepo.updatePayment(rideId, method);
+//        ride.setStatus(Status.COMPLETED);
+//        rideRepository.save(ride);
+//
+//        driverLedgerService.createLedgerEntry(ride);
+//        return ride;
+        paymentProducer.publishPaymentSuccess(rideId, method);
+        return rideRepository.findById(rideId).orElseThrow();
     }
 
     public RideCardResponse getRideCard(Integer rideId) {
@@ -399,5 +421,9 @@ public class RideServiceImpl implements RideService{
         return rideRepo.getCurrentRideForDriver(driverId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "No active ride for this driver"));
+    }
+
+    public void publishPaymentCompleted(PaymentSuccessEvent event) {
+        kafkaTemplate.send("payment-events", event.rideId().toString(), event);
     }
 }

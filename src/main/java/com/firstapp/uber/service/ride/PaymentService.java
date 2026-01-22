@@ -5,11 +5,17 @@ import com.firstapp.uber.repository.ride.RideRepo;
 import com.firstapp.uber.repository.ride.RideRepository;
 import com.firstapp.uber.service.driverledger.DriverLedgerService;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import model.PaymentStatus;
 import model.Status;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
+@Slf4j
+@Service
 public class PaymentService {
     private final RideRepo rideRepo;
     private final DriverLedgerService ledgerService;
@@ -26,20 +32,21 @@ public class PaymentService {
     }
 
     @Transactional
-    public Ride handlePaymentSuccess(Integer rideId, String method) {
+    public Optional<Ride> handlePaymentSuccess(Integer rideId, String method) {
 
-        Ride ride = rideRepo.findById(rideId)
-                .orElseThrow(() -> new RuntimeException("Ride not found"));
+        Optional<Ride> optionalRide = rideRepo.findById(rideId);
 
-        if ("COMPLETED".equals(ride.getStatus())) {
-            return ride;
+        if (optionalRide.isEmpty()) {
+            log.warn("Payment event received but ride {} not found. Ignoring.", rideId);
+            return Optional.empty();
         }
 
-        if ("SUCCESS".equals(ride.getPaymentStatus())) {
-            return ride;
+        Ride ride = optionalRide.get();
+        if (PaymentStatus.COMPLETED.equals(ride.getPaymentStatus())) {
+            return Optional.of(ride);
         }
 
-        ride.setPaymentStatus("SUCCESS");
+        ride.setPaymentStatus(PaymentStatus.COMPLETED);
         ride.setPaymentMethod(method);
 
         ride.setStatus(Status.COMPLETED);
@@ -49,6 +56,6 @@ public class PaymentService {
 
         ledgerService.createLedgerEntry(ride);
 
-        return ride;
+        return Optional.of(ride);
     }
 }

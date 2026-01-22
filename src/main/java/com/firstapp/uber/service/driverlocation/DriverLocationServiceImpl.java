@@ -1,5 +1,6 @@
 package com.firstapp.uber.service.driverlocation;
 
+import com.firstapp.uber.repository.driverlocation.DriverLocationRedisRepo;
 import com.firstapp.uber.repository.driverlocation.DriverLocationRepo;
 import com.firstapp.uber.dto.driverlocation.DriverLocation;
 import org.springframework.stereotype.Service;
@@ -10,18 +11,28 @@ import java.util.Optional;
 public class DriverLocationServiceImpl implements DriverLocationService{
 
     private final DriverLocationRepo driverLocationRepo;
-    public DriverLocationServiceImpl(DriverLocationRepo driverLocationRepo){
+    private final DriverLocationRedisRepo redisRepo;
+    public DriverLocationServiceImpl(DriverLocationRepo driverLocationRepo,
+                                     DriverLocationRedisRepo redisRepo) {
         this.driverLocationRepo = driverLocationRepo;
+        this.redisRepo = redisRepo;
     }
 
+    @Override
     public DriverLocation updateLocation(Integer driverId, double lat, double lng){
-        return driverLocationRepo.upsertLocation(driverId,lat,lng);
+        redisRepo.upsertLocation(driverId, lat, lng);
+        return redisRepo.getLocation(driverId).orElseGet(() ->
+                driverLocationRepo.upsertLocation(driverId, lat, lng)
+        );
     }
+
+    @Override
     public Optional<DriverLocation> findByDriverId(Integer driverId) {
-        return driverLocationRepo.findDriverLocationById(driverId);
+        return redisRepo.getLocation(driverId).or(() -> driverLocationRepo.findDriverLocationById(driverId));
     }
+    @Override
     public DriverLocation getOrThrow(Integer driverId) {
-        return driverLocationRepo.findDriverLocationById(driverId)
+        return findByDriverId(driverId)
                 .orElseThrow(() -> new RuntimeException("Driver location not found for id " + driverId));
     }
 }

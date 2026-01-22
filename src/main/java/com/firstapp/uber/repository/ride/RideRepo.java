@@ -2,6 +2,7 @@ package com.firstapp.uber.repository.ride;
 
 import com.firstapp.uber.dto.ride.Ride;
 import jakarta.transaction.Transactional;
+import model.PaymentStatus;
 import model.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
@@ -46,7 +47,7 @@ public class RideRepo {
         ride.setFinalFare(null);
         ride.setStartedOn(null);
         ride.setEndedOn(null);
-        ride.setPaymentStatus("PENDING");
+        ride.setPaymentStatus(PaymentStatus.PENDING);
         ride.setPaymentMethod("CASH");
 
         return rideRepository.save(ride);

@@ -1,11 +1,14 @@
 package com.firstapp.uber.controller.ride;
 
+import com.firstapp.uber.auth.CustomUserDetails;
+import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
 import com.firstapp.uber.repository.ride.RideRepository;
 import com.firstapp.uber.service.ride.RideService;
 import com.firstapp.uber.ride.dto.RideCardResponse;
 import com.firstapp.uber.dto.ride.CreateRideRequest;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
 import com.firstapp.uber.dto.ride.Ride;
+import model.PaymentStatus;
 import model.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,8 +40,8 @@ public class RideController {
         }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) authentication.getPrincipal();
-        Integer userId = user.id(); // adjust if principal isn't Integer
+        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
+        Integer userId = user.getUserId();
 
         CreateRideResponse resp = rideService.createRide(userId,
                 req.pickupLat(), req.pickupLng(),
@@ -84,11 +87,15 @@ public class RideController {
     }
 
     @PostMapping("/{rideId}/payment-success")
-    public Ride markPaymentSuccess(
+    public ResponseEntity<String> markPaymentSuccess(
             @PathVariable Integer rideId,
             @RequestBody PaymentRequest req
     ) {
-        return rideService.markPaymentSuccess(rideId, req.method());
+        PaymentSuccessEvent event = new PaymentSuccessEvent(rideId, req.method(), PaymentStatus.COMPLETED,
+                System.currentTimeMillis());
+        rideService.publishPaymentCompleted(event);
+        return ResponseEntity.accepted().body("Payment event published");
+        //return rideService.markPaymentSuccess(rideId, req.method());
     }
     @GetMapping("/{rideId}/eta")
     public EtaResponse getEta(@PathVariable Integer rideId) {

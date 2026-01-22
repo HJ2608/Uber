@@ -3,6 +3,7 @@ package com.firstapp.uber.service.ride;
 import com.firstapp.uber.dto.driver.DriverResponse;
 import com.firstapp.uber.dto.ride.CreateRideRequest;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
+import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
 import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.ride.dto.EtaResponse;
 import com.firstapp.uber.ride.dto.RideCardResponse;
@@ -38,6 +39,8 @@ public interface RideService {
     public Ride markPaymentSuccess(Integer rideId, String method);
 
     public RideCardResponse getRideCard(Integer custId);
+
+    public void publishPaymentCompleted(PaymentSuccessEvent event);
 
     List<Ride> getAllRides();
 }

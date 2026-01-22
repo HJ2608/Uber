@@ -2,6 +2,7 @@ package com.firstapp.uber.dto.ride;
 
 import jakarta.persistence.*;
 import lombok.*;
+import model.PaymentStatus;
 import model.Status;
 
 import java.math.BigDecimal;
@@ -24,11 +25,11 @@ public class Ride{
         Integer driverId;
         @Column(name = "pickup_lat")
         double pickupLat;
-        @Column(name = "pickupLng")
+        @Column(name = "pickup_lng")
         double pickupLng;
         @Column(name = "drop_lat")
         double dropLat;
-        @Column(name = "dropLng")
+        @Column(name = "drop_lng")
         double dropLng;
         @Column(name = "otp_id")
         Integer otpId;
@@ -42,8 +43,9 @@ public class Ride{
         LocalDateTime startedOn;
         @Column(name = "ended_on")
         LocalDateTime endedOn;
+        @Enumerated(EnumType.STRING)
         @Column(name = "payment_status")
-        String paymentStatus;
+        PaymentStatus paymentStatus;
         @Column(name = "payment_method")
         String paymentMethod;
         @Enumerated(EnumType.STRING)

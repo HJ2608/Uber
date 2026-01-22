@@ -9,6 +9,7 @@ import com.firstapp.uber.repository.ride.RideRepo;
 import com.firstapp.uber.service.otp.OtpService;
 import com.firstapp.uber.service.ride.RideRequestCache;
 import com.firstapp.uber.service.ride.RideServiceImpl;
+import com.firstapp.uber.websocket.registry.WebSocketSessionRegistry;
 import jakarta.transaction.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -23,15 +24,18 @@ public class DriverNotificationService {
     private final DriverRepo driverRepository;
     private final RideRepo rideRepository;
         private final RideRequestCache rideRequestCache;
+        private final WebSocketSessionRegistry webSocketSessionRegistry;
 
     public DriverNotificationService(SimpMessagingTemplate messagingTemplate,
                                      DriverRepo driverRepository,
                                      RideRepo rideRepository,
-                                     RideRequestCache rideRequestCache) {
+                                     RideRequestCache rideRequestCache,
+                                     WebSocketSessionRegistry webSocketSessionRegistry) {
         this.messagingTemplate = messagingTemplate;
         this.driverRepository = driverRepository;
         this.rideRepository = rideRepository;
         this.rideRequestCache = rideRequestCache;
+        this.webSocketSessionRegistry = webSocketSessionRegistry;
     }
 
     @Transactional
@@ -45,11 +49,18 @@ public class DriverNotificationService {
     }
 
     public void sendRideRequest(Integer driverId, DriverRequest request) {
+        System.out.println("Sending ride request to driverId=" + driverId);
+
+        String principalName = webSocketSessionRegistry.principalName(driverId);
+        System.out.println("Sending ride request to driverId=" + driverId
+                + " principal=" + principalName);
         messagingTemplate.convertAndSendToUser(
-                driverId.toString(),
+                principalName,
                 "/queue/ride-request",
                 request
         );
+        System.out.println("Published to /user/" + principalName + "/queue/ride-request");
+
     }
 
     public void notifyRideTaken(Integer rideId, Integer acceptedDriverId) {

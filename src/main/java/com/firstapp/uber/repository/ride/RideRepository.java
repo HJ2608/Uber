@@ -57,7 +57,7 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
     @Transactional
     @Query("""
     UPDATE Ride r
-    SET r.paymentStatus = 'SUCCESS',
+    SET r.paymentStatus = 'COMPLETED',
         r.paymentMethod = :method
     WHERE r.rideId = :rideId
     """)

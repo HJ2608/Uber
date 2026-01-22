@@ -8,17 +8,21 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class WebSocketSessionRegistry {
 
-    private final Map<Integer, String> driverToSession = new ConcurrentHashMap<>();
+    private final Map<Integer, String> driverIdToPrincipalName = new ConcurrentHashMap<>();
 
-    public void register(Integer driverId, String sessionId) {
-        driverToSession.put(driverId, sessionId);
+    public void register(Integer driverId, String principalName) {
+        driverIdToPrincipalName.put(driverId, principalName);
     }
 
     public void remove(Integer driverId) {
-        driverToSession.remove(driverId);
+        driverIdToPrincipalName.remove(driverId);
     }
 
     public boolean isOnline(Integer driverId) {
-        return driverToSession.containsKey(driverId);
+        return driverIdToPrincipalName.containsKey(driverId);
+    }
+
+    public String principalName(Integer driverId) {
+        return driverIdToPrincipalName.get(driverId);
     }
 }

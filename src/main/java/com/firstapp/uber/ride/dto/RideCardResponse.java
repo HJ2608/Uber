@@ -1,5 +1,6 @@
 package com.firstapp.uber.ride.dto;
 
+import model.PaymentStatus;
 import model.Status;
 
 import java.math.BigDecimal;
@@ -9,7 +10,7 @@ public record RideCardResponse(
         Status status,
         BigDecimal estimatedFare,
         BigDecimal finalFare,
-        String paymentStatus,
+        PaymentStatus paymentStatus,
         String paymentMethod,
         double pickupLat,
         double pickupLng,

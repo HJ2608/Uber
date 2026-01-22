@@ -26,11 +26,18 @@ public class WebSocketEventsListener {
     @EventListener
     public void handleConnect(SessionConnectedEvent event) {
         Integer driverId = extractDriverId(event.getMessage());
-        if (driverId != null) {
-            registry.register(driverId, event.getMessage().getHeaders().get("simpSessionId").toString());
-        }
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        Authentication auth = (Authentication) accessor.getUser();
+        String principalName = accessor.getUser().getName();
+        if (driverId != null) {
+            registry.register(driverId, principalName);
+        }
         System.out.println("WS Principal = " + accessor.getUser());
+        System.out.println("WS Principal name = " + principalName);
+        System.out.println("WS CONNECT simpSessionId=" + event.getMessage().getHeaders().get("simpSessionId"));
+        System.out.println("WS CONNECT extracted driverId=" + driverId);
+        System.out.println("WS CONNECT registry now online? " + registry.isOnline(driverId));
+
     }
 
     @EventListener
