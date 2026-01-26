@@ -2,6 +2,7 @@ package com.firstapp.uber.controller.driver;
 
 import com.firstapp.uber.auth.CustomUserDetails;
 import com.firstapp.uber.dto.driverledger.DriverLedger;
+import com.firstapp.uber.dto.driverledger.DriverLedgerResponse;
 import com.firstapp.uber.repository.driverledger.DriverLedgerRepository;
 import com.firstapp.uber.service.driver.DriverContextService;
 import org.springframework.security.core.Authentication;
@@ -43,6 +44,26 @@ public class DriverEarningsController {
 
         return ledgerRepo.todayEarnings(driverId, start, end);
     }
+
+    @GetMapping("/rides")
+    public List<DriverLedgerResponse> rides(Authentication auth) {
+        Integer driverId = driverContextService.getDriverId(auth);
+
+        return ledgerRepo.findByDriverIdOrderByCreatedAtDesc(driverId)
+                .stream()
+                .map(x -> new DriverLedgerResponse(
+                        x.getId(),
+                        x.getRideId(),
+                        x.getTotalFare(),
+                        x.getDriverCut(),
+                        x.getCompanyCut(),
+                        x.getCreatedAt()
+                ))
+                .toList();
+    }
+
+
+
 
 //    @GetMapping("/rides")
 //    public List<DriverLedger> rides(Principal principal) {

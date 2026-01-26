@@ -47,4 +47,6 @@ public interface DriverLedgerRepository extends JpaRepository<DriverLedger,Long>
             @Param("from")LocalDateTime from,
             @Param("to")LocalDateTime to
     );
+
+    List<DriverLedger> findByDriverIdOrderByCreatedAtDesc(Integer driverId);
 }
