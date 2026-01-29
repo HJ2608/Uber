@@ -133,6 +133,7 @@ public class RideServiceImpl implements RideService{
         );
 
         DriverRequest req = new DriverRequest(
+                ride.getRideId(),
                 estimatedFare,
                 pickupLat,
                 pickupLng,
@@ -152,6 +153,7 @@ public class RideServiceImpl implements RideService{
                 notificationService.sendRideRequest(driverId, req);
             }
         });
+
 
         return new CreateRideResponse(
                 ride.getRideId(),

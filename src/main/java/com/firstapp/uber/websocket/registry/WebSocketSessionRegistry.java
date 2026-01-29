@@ -25,4 +25,5 @@ public class WebSocketSessionRegistry {
     public String principalName(Integer driverId) {
         return driverIdToPrincipalName.get(driverId);
     }
+
 }

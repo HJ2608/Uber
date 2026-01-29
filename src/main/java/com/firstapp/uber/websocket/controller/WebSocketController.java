@@ -7,6 +7,7 @@ import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.service.driver.DriverNotificationService;
 import com.firstapp.uber.service.driver.DriverService;
 import com.firstapp.uber.service.ride.RideServiceImpl;
+import com.firstapp.uber.websocket.registry.WebSocketSessionRegistry;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
@@ -21,15 +22,18 @@ public class WebSocketController {
     private final RideServiceImpl rideService;
     private final DriverNotificationService driverNotificationService;
     private final DriverService driverService;
+    private final WebSocketSessionRegistry webSocketSessionRegistry;
 
     public WebSocketController(SimpMessagingTemplate messagingTemplate,
                                RideServiceImpl rideService,
                                DriverNotificationService driverNotificationService,
-                               DriverService driverService) {
+                               DriverService driverService,
+                               WebSocketSessionRegistry webSocketSessionRegistry) {
         this.messagingTemplate = messagingTemplate;
         this.rideService = rideService;
         this.driverNotificationService = driverNotificationService;
         this.driverService = driverService;
+        this.webSocketSessionRegistry = webSocketSessionRegistry;
     }
 
 
@@ -50,20 +54,37 @@ public class WebSocketController {
 
             Ride ride = rideService.assignDriver(response.rideId(), response.driverId());
 
-            messagingTemplate.convertAndSend("/queue/ride-status" + ride.getCustId(), ride);
+            String driverPrincipal =
+                    webSocketSessionRegistry.principalName(driverId);
 
-            messagingTemplate.convertAndSend("/queue/ride-status" + driverId.toString(), "You got the ride!");
+            messagingTemplate.convertAndSendToUser(
+                    driverPrincipal,
+                    "/queue/ride-status",
+                    "You got the ride!"
+            );
 
             driverNotificationService.notifyRideTaken(ride.getRideId(),driverId);
         } catch (Exception e) {
 
-            messagingTemplate.convertAndSend("/queue/ride-status" + driverId.toString(), "Ride already assigned");
+            String principalName = webSocketSessionRegistry.principalName(driverId);
+
+            messagingTemplate.convertAndSendToUser(
+                    principalName,
+                    "/queue/ride-status",
+                    "Ride already assigned"
+            );
         }
     }
 
 
     public void sendRideRequest(Integer driverId, DriverRequest request) {
-        messagingTemplate.convertAndSend("/queue/ride-requests" + driverId.toString(), request);
+        String principalName = webSocketSessionRegistry.principalName(driverId);
+
+        messagingTemplate.convertAndSendToUser(
+                principalName,
+                "/queue/ride-request",
+                request
+        );
     }
 }
 

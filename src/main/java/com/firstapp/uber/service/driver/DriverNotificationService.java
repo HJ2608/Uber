@@ -50,8 +50,17 @@ public class DriverNotificationService {
 
     public void sendRideRequest(Integer driverId, DriverRequest request) {
         System.out.println("Sending ride request to driverId=" + driverId);
+        messagingTemplate.convertAndSend(
+                "/topic/ride-request-test",
+                "WS_TEST_BROADCAST: sendRideRequest() called for driverId=" + driverId
+        );
+        System.out.println("✅ Sent BROADCAST to /topic/ride-request-test for driverId=" + driverId);
 
         String principalName = webSocketSessionRegistry.principalName(driverId);
+        System.out.println(
+                "WS SEND → principal=" + principalName +
+                        " destination=/user/queue/ride-request payload=" + request
+        );
         System.out.println("Sending ride request to driverId=" + driverId
                 + " principal=" + principalName);
         messagingTemplate.convertAndSendToUser(
@@ -59,7 +68,10 @@ public class DriverNotificationService {
                 "/queue/ride-request",
                 request
         );
-        System.out.println("Published to /user/" + principalName + "/queue/ride-request");
+        System.out.println(
+                "Sending WS message to user=[" + principalName + "] destination=/queue/ride-request"
+        );
+        System.out.println("Published to /user" + "/queue/ride-request");
 
     }
 
@@ -67,8 +79,9 @@ public class DriverNotificationService {
         List<Integer> alertedDrivers = rideRequestCache.get(rideId);
         alertedDrivers.forEach(driverId -> {
             if (!driverId.equals(acceptedDriverId)) {
+                String principalName = webSocketSessionRegistry.principalName(driverId);
                 messagingTemplate.convertAndSendToUser(
-                        driverId.toString(),
+                        principalName,
                         "/queue/ride-cancelled",
                         "Ride already accepted"
                 );
@@ -91,13 +104,19 @@ public class DriverNotificationService {
 //    }
 
     public void notifyRideAssignment(Ride ride, Integer driverId) {
-        messagingTemplate.convertAndSend("/queue/ride-status" + ride.getCustId(), ride);
-        messagingTemplate.convertAndSend("/queue/ride-status" + driverId, "You got the ride!");
+        messagingTemplate.convertAndSend("/queue/ride-status", ride);
+        messagingTemplate.convertAndSend("/queue/ride-status", "You got the ride!");
         notifyRideTaken(ride.getRideId(), driverId);
     }
 
     public void notifyRideAssignmentFailed(Integer driverId) {
-        messagingTemplate.convertAndSend("/queue/ride-status" + driverId, "Ride already assigned");
+        String principalName = webSocketSessionRegistry.principalName(driverId);
+
+        messagingTemplate.convertAndSendToUser(
+                principalName,
+                "/queue/ride-status",
+                "Ride already assigned"
+        );
     }
 
 }

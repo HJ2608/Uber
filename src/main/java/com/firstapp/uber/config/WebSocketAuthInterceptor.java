@@ -36,6 +36,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 System.out.println("Inside WebSocketAuthInterceptor AUTH");
                 Authentication auth = jwtService.authenticate(token);
+                System.out.println("WS AUTH principal name = [" + auth.getName() + "]");
                 accessor.setUser(auth);
                 System.out.println("WS CONNECT Authorization = " +
                         accessor.getFirstNativeHeader("Authorization"));

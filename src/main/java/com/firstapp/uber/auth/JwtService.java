@@ -95,7 +95,7 @@ public class JwtService {
             throw new RuntimeException("Invalid or expired JWT");
         }
         System.out.println("Inside authenticate token is valid");
-
+        System.out.println("JWT subject (phone)"+ extractSubject(token));
         Integer userIdInt = extractUserId(token);
         Long userIdLng = userIdInt.longValue();
 

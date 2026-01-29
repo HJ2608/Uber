@@ -76,6 +76,13 @@ public class UserRepo {
                 .optional();
     }
 
+    public Optional<Integer> findUserIdByMobile(String mobile) {
+        return jdbc.sql("SELECT id FROM users WHERE mobile_num = :mobile")
+                .param("mobile", mobile)
+                .query(Integer.class)
+                .optional();
+    }
+
     public Optional<User> findByEmail(String email) {
         return jdbc.sql("SELECT * FROM users WHERE email = :email")
                 .param("email", email)
