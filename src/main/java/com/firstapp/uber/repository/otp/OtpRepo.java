@@ -43,6 +43,10 @@ public class OtpRepo {
                 userId, otpCode, purpose, LocalDateTime.now());
     }
 
+    public Optional<Otp> findValidOtpForRide(Integer rideId, String otpCode, String purpose) {
+        return repo.findValidOtpForRide(rideId, otpCode, purpose);
+    }
+
     @Transactional
     public void markUsed(Integer otpId) {
         repo.markUsed(otpId);

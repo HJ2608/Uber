@@ -1,13 +1,10 @@
 package com.firstapp.uber.controller.ride;
 
 import com.firstapp.uber.auth.CustomUserDetails;
-import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
+import com.firstapp.uber.dto.ride.*;
 import com.firstapp.uber.repository.ride.RideRepository;
 import com.firstapp.uber.service.ride.RideService;
 import com.firstapp.uber.ride.dto.RideCardResponse;
-import com.firstapp.uber.dto.ride.CreateRideRequest;
-import com.firstapp.uber.dto.ride.CreateRideResponse;
-import com.firstapp.uber.dto.ride.Ride;
 import model.PaymentStatus;
 import model.User;
 import org.springframework.http.HttpStatus;
@@ -50,7 +47,8 @@ public class RideController {
         return ResponseEntity.ok(resp);
     }
 
-    public record StartRideRequest(Integer user_id, String otp_code) {}
+    public record StartRideRequest(Integer rideId, String otp) {}
+    public record StartRideResponse(boolean success, String message) {}
 
     public record AssignDriverRequest(Integer driverId) {}
 
@@ -61,14 +59,16 @@ public class RideController {
     }
 
     @PostMapping("/start")
-    public ResponseEntity<String> startRide(@RequestBody StartRideRequest req) {
-        boolean ok = rideService.startRide(req.user_id(), req.otp_code());
+    public ResponseEntity<StartRideResponse> startRide(@RequestBody StartRideRequest req) {
+        boolean ok = rideService.startRide(req.rideId(), req.otp());
 
         if (!ok) {
-            return ResponseEntity.badRequest().body("Invalid or expired OTP");
+            return ResponseEntity
+                    .badRequest()
+                    .body(new StartRideResponse(false, "Invalid or expired OTP"));
         }
 
-        return ResponseEntity.ok("Ride started successfully");
+        return ResponseEntity.ok(new StartRideResponse(true, "Ride started successfully"));
     }
 
     @PostMapping("/{rideId}/end")
@@ -84,6 +84,18 @@ public class RideController {
     @GetMapping("/current")
     public Ride getCurrentRide(@RequestParam Integer custId) {
         return rideService.getCurrentRide(custId);
+    }
+
+    @GetMapping("/driver/current/{rideId}")
+    public RideDetail getCurrentRideFromRideId(@PathVariable Integer rideId) {
+        long t0 = System.currentTimeMillis();
+        System.out.println("✅ controller entered rideId=" + rideId);
+        RideDetail rideDetail = rideService.getCurrentRideFromRideId(rideId);
+        System.out.println("✅ service returned rideId=" + rideId);
+        long ms = System.currentTimeMillis() - t0;
+        System.out.println("✅ service returned rideId=" + rideId + " in " + ms + "ms");
+        return rideService.getCurrentRideFromRideId(rideId);
+
     }
 
     @PostMapping("/{rideId}/payment-success")

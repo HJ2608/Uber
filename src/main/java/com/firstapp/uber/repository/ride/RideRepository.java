@@ -1,6 +1,7 @@
 package com.firstapp.uber.repository.ride;
 
 import com.firstapp.uber.dto.ride.Ride;
+import com.firstapp.uber.dto.ride.RideDetail;
 import jakarta.transaction.Transactional;
 import model.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -140,4 +141,21 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
         WHERE r.driverId = :driverId AND r.status IN ('ASSIGNED', 'ONGOING')
     """)
     Optional<Ride> findCurrentRideForDriver(@Param("driverId") Integer driverId);
+
+    @Query("""
+    SELECT new com.firstapp.uber.dto.ride.RideDetail(
+        r.id,
+        CONCAT(u.firstName, ' ', u.lastName),
+        u.mobileNum,
+        r.pickupLat,
+        r.pickupLng,
+        r.dropLat,
+        r.dropLng,
+        r.estimatedFare
+    )
+    FROM Ride r
+    JOIN UserEntity u ON r.custId = u.id
+    WHERE r.id = :rideId
+""")
+    RideDetail getRideSummary(@Param("rideId") Integer rideId);
 }

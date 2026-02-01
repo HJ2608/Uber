@@ -12,7 +12,7 @@ public interface OtpService {
     public boolean verifyLoginOtp(Integer userId, String otpCode);
     public Otp generateRideStartOtp(Integer userId);
 
-    public Optional<Otp> consumeRideStartOtp(Integer userId, String otpCode);
+    public Optional<Otp> consumeRideStartOtp(Integer rideId, String otp);
 
     public Optional<Otp> getOtpById(Integer otpId);
 }

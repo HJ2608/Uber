@@ -10,6 +10,7 @@ import com.firstapp.uber.dto.otp.Otp;
 import com.firstapp.uber.dto.ride.CreateRideResponse;
 import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
 import com.firstapp.uber.dto.ride.Ride;
+import com.firstapp.uber.dto.ride.RideDetail;
 import com.firstapp.uber.google.DistanceMatrixResponse;
 import com.firstapp.uber.repository.driver.DriverRepo;
 import com.firstapp.uber.repository.driver.DriverRepository;
@@ -38,8 +39,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
+
+
 
 @Service
 public class RideServiceImpl implements RideService{
@@ -91,6 +96,10 @@ public class RideServiceImpl implements RideService{
         this.paymentProducer = paymentProducer;
         this.kafkaTemplate = kafkaTemplate;
     }
+
+    private static final BigDecimal GRACE_PERCENT = new BigDecimal("0.15");
+    private static final BigDecimal EXTRA_PER_MIN = new BigDecimal("5.00");
+
 
     public CreateRideResponse createRide(Integer userId,
                                          double pickupLat, double pickupLng,
@@ -234,9 +243,9 @@ public class RideServiceImpl implements RideService{
 //    }
 
 
-    public boolean startRide(Integer userId, String otpCode) {
+    public boolean startRide(Integer rideId, String otp) {
 
-        var match = otpService.consumeRideStartOtp(userId, otpCode);
+        var match = otpService.consumeRideStartOtp(rideId, otp);
         if (match.isEmpty()) {
             return false;
         }
@@ -265,10 +274,32 @@ public class RideServiceImpl implements RideService{
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Ride not found"));
 
-        if (!PaymentStatus.COMPLETED.equals(ride.getPaymentStatus())) {
+        if (ride.getStartedOn() == null) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Payment not completed");
+                    HttpStatus.BAD_REQUEST, "Ride not started");
         }
+
+        LocalDateTime endedOn = LocalDateTime.now();
+        ride.setEndedOn(endedOn);
+
+        long actualSeconds =
+                Duration.between(ride.getStartedOn(), endedOn).getSeconds();
+
+        BigDecimal estimatedFare = ride.getEstimatedFare();
+        if (estimatedFare == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Estimated fare missing");
+        }
+
+        BigDecimal finalFare = calculateFinalFare(
+                estimatedFare,
+                actualSeconds
+        );
+
+
+
+        ride.setFinalFare(finalFare);
+
 
         if (ride.getDriverId() == null) {
             throw new ResponseStatusException(
@@ -293,9 +324,36 @@ public class RideServiceImpl implements RideService{
                     "Driver is too far from drop point (" + String.format("%.2f", distanceKm) + " km)");
         }
 
+        ride.setStatus(Status.COMPLETED);
+
+        rideRepository.save(ride);
 
         return rideRepo.endRide(rideId);
     }
+
+    private BigDecimal calculateFinalFare(
+            BigDecimal estimatedFare,
+            long actualSeconds
+    ) {
+        // heuristic: estimated duration ≈ fare * constant
+        // for now assume avg speed & pricing already baked into fare
+
+        long estimatedSeconds = 15 * 60; // example: 15 min default
+        long graceSeconds = (long) (estimatedSeconds * 1.15);
+
+        if (actualSeconds <= graceSeconds) {
+            return estimatedFare; // no increase
+        }
+
+        long extraSeconds = actualSeconds - graceSeconds;
+        long extraMinutes = (long) Math.ceil(extraSeconds / 60.0);
+
+        BigDecimal surcharge =
+                EXTRA_PER_MIN.multiply(BigDecimal.valueOf(extraMinutes));
+
+        return estimatedFare.add(surcharge);
+    }
+
 
     public EtaResponse getEta(Integer rideId) {
         Ride ride = rideRepo.findById(rideId)
@@ -343,6 +401,10 @@ public class RideServiceImpl implements RideService{
         return rideRepo.cancelRide(rideId);
     }
 
+    public RideDetail getCurrentRideFromRideId(Integer rideId) {
+        return rideRepository.getRideSummary(rideId);
+    }
+
     public Ride getCurrentRide(Integer custId) {
         return rideRepo.getCurrentRide(custId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -355,6 +417,12 @@ public class RideServiceImpl implements RideService{
 //
 //        driverLedgerService.createLedgerEntry(ride);
 //        return ride;
+        Ride ride = rideRepo.findById(rideId)
+                .orElseThrow (()-> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "No ride with this id"));
+        if (ride.getFinalFare() == null || ride.getEndedOn() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ride must be ended before payment");
+        }
         paymentProducer.publishPaymentSuccess(rideId, method);
         return rideRepository.findById(rideId).orElseThrow();
     }

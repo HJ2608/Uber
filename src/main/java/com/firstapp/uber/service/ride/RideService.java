@@ -1,10 +1,7 @@
 package com.firstapp.uber.service.ride;
 
 import com.firstapp.uber.dto.driver.DriverResponse;
-import com.firstapp.uber.dto.ride.CreateRideRequest;
-import com.firstapp.uber.dto.ride.CreateRideResponse;
-import com.firstapp.uber.dto.ride.PaymentSuccessEvent;
-import com.firstapp.uber.dto.ride.Ride;
+import com.firstapp.uber.dto.ride.*;
 import com.firstapp.uber.ride.dto.EtaResponse;
 import com.firstapp.uber.ride.dto.RideCardResponse;
 
@@ -24,7 +21,7 @@ public interface RideService {
 
     public void handleDriverResponse(DriverResponse driverResponse, Integer driverId);
 
-    public boolean startRide(Integer userId, String otpCode);
+    public boolean startRide(Integer rideId, String otp);
 
     public Ride assignDriver(Integer rideId, Integer driverId);
 
@@ -35,6 +32,8 @@ public interface RideService {
     public Ride cancelRide(Integer rideId);
 
     public Ride getCurrentRide(Integer custId);
+
+    public RideDetail getCurrentRideFromRideId(Integer rideId);
 
     public Ride markPaymentSuccess(Integer rideId, String method);
 

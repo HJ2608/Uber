@@ -45,8 +45,8 @@ public class OtpServiceImpl implements OtpService{
         String code = generateNumericOtp(4);
         return otpRepo.createOtp(userId, code, "RIDE_START", Duration.ofMinutes(10));
     }
-    public Optional<Otp> consumeRideStartOtp(Integer userId, String otpCode) {
-        Optional<Otp> match = otpRepo.findValidOtp(userId, otpCode, "RIDE_START");
+    public Optional<Otp> consumeRideStartOtp(Integer rideId, String otp) {
+        Optional<Otp> match = otpRepo.findValidOtpForRide(rideId, otp, "RIDE_START");
         if (match.isEmpty()) {
             return Optional.empty();
         }

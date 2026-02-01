@@ -22,6 +22,23 @@ public interface OtpRepository extends JpaRepository<Otp, Integer>{
             LocalDateTime now
     );
 
+    @Query("""
+    SELECT o
+    FROM Ride r
+    JOIN Otp o ON r.otpId = o.otpId
+    WHERE r.id = :rideId
+    AND o.otpCode = :otpCode
+    AND o.purpose = :purpose
+    AND o.isValid = true
+    AND o.usedAt IS NULL
+    AND o.expiresAt > CURRENT_TIMESTAMP
+    """)
+    Optional<Otp> findValidOtpForRide(
+            @Param("rideId") Integer rideId,
+            @Param("otpCode") String otpCode,
+            @Param("purpose") String purpose
+    );
+
     @Modifying
     @Query("update Otp o set o.usedAt = CURRENT_TIMESTAMP, o.isValid = false where o.id = :otpId")
     int markUsed(@Param("otpId") Integer otpId);

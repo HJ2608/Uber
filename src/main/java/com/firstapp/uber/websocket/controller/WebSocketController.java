@@ -52,7 +52,7 @@ public class WebSocketController {
         rideService.handleDriverResponse(response,driverId);
         try {
 
-            Ride ride = rideService.assignDriver(response.rideId(), response.driverId());
+            Ride ride = rideService.assignDriver(response.rideId(), driverId);
 
             String driverPrincipal =
                     webSocketSessionRegistry.principalName(driverId);
