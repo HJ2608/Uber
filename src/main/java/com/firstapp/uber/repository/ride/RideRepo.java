@@ -70,8 +70,9 @@ public class RideRepo {
 //                .orElseThrow(() -> new IllegalArgumentException("Ride not found with id: " + rideId));
 //        ride.setDriverId(driverId);
 //        ride.setStatus(Status.ASSIGNED);
-
+        System.out.println("Inside assignDriver of RideRepo before assignDriverIfFree is called");
         int updated = rideRepository.assignDriverIfFree(rideId, driverId);
+        System.out.println("assignDriverIfFree updatedRows={"+updated+"}, rideId={"+rideId+"}, driverId={"+driverId+"}");
 
         if(updated == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ride already accepted by another driver");

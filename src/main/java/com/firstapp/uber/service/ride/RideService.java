@@ -19,7 +19,7 @@ public interface RideService {
     Optional<Ride> getCurrentRideForDriver(Integer driverId);
     public void acceptRide(Integer driverId, Integer rideId);
 
-    public void handleDriverResponse(DriverResponse driverResponse, Integer driverId);
+    public Ride handleDriverResponse(DriverResponse driverResponse, Integer driverId);
 
     public boolean startRide(Integer rideId, String otp);
 

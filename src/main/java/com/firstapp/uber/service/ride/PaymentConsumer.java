@@ -13,6 +13,7 @@ public class PaymentConsumer {
 
     @KafkaListener(topics = "payment-events", groupId = "payment-group")
     public void consume(PaymentSuccessEvent event) {
+        System.out.println("🔥 PaymentConsumer got: " + event);
         paymentService.handlePaymentSuccess(
                 event.rideId(),
                 event.method()

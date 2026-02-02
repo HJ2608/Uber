@@ -32,6 +32,7 @@ public class DriverLocationRedisRepo {
     }
 
     public void upsertLocation(Integer driverId, double lat, double lng) {
+        System.out.println("REDIS UPSERT driverId=" + driverId + " lat=" + lat + " lng=" + lng);
         String member = "driver:" + driverId;
         String hashKey = "driver:loc:" + driverId;
 

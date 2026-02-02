@@ -90,8 +90,9 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
     @Modifying
     @Query(value = """
             UPDATE rides r
-                        SET r.driver_id = :driverId,
-                        r.status = 'ASSIGNED'
+                        SET driver_id = :driverId,
+                        cab_id = (SELECT d.cab_id FROM drivers d WHERE d.id = :driverId),
+                        status = 'ASSIGNED'
                         WHERE r.id = :rideId
                         AND r.driver_id IS NULL
                         AND r.status = 'REQUESTED'

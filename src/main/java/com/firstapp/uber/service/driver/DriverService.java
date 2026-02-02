@@ -21,4 +21,13 @@ public class DriverService {
                 .map(Driver::getId)
                 .orElse(null);
     }
+
+    public boolean isDriverPhone(String phone) {
+        return driverRepository.existsByUser_MobileNum(phone);
+    }
+
+    public Integer findDriverIdByPhone(String phone) {
+        return driverRepository.findDriverIdByPhone(phone)
+                .orElseThrow(() -> new IllegalStateException("Driver not found for phone " + phone));
+    }
 }

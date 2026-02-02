@@ -220,12 +220,15 @@ public class RideServiceImpl implements RideService{
         rideRequestCache.remove(rideId);
     }
 
-    public void handleDriverResponse(DriverResponse driverResponse, Integer driverId) {
+    public Ride handleDriverResponse(DriverResponse driverResponse, Integer driverId) {
         try {
+            System.out.println("Inside try block of handleDriverResponse");
             Ride ride = assignDriver(driverResponse.rideId(), driverId);
             notificationService.notifyRideAssignment(ride, driverId);
+            return ride;
         } catch (Exception e) {
             notificationService.notifyRideAssignmentFailed(driverId);
+            throw e;
         }
     }
 
@@ -255,6 +258,7 @@ public class RideServiceImpl implements RideService{
     }
 
     public Ride assignDriver(Integer rideId, Integer driverId) {
+        System.out.println("Inside of assignDriver");
         Optional<Ride> existing = rideRepo.findById(rideId);
         if (existing.isEmpty()) {
             throw new IllegalArgumentException("Ride not found: " + rideId);
@@ -318,6 +322,7 @@ public class RideServiceImpl implements RideService{
 
         double distanceKm = haversineKm(driverLat, driverLng, dropLat, dropLng);
 
+        System.out.println("driverLat: " + driverLat + " driverLng: " + driverLng);
         if (distanceKm > 5.0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

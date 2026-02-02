@@ -27,4 +27,10 @@ public interface DriverRepository extends JpaRepository<Driver, Integer> {
         ORDER BY array_position(:candidateIds, d.id)
         """, nativeQuery = true)
     List<Integer> filterAvailableFromCandidates(@Param("candidateIds") Integer[] candidateIds);
+
+
+    boolean existsByUser_MobileNum(String phone);
+
+    @Query("select d.id from Driver d where d.user.mobileNum = :phone")
+    Optional<Integer> findDriverIdByPhone(@Param("phone") String phone);
 }
