@@ -106,7 +106,7 @@ public class RideServiceImpl implements RideService{
                                          double dropLat, double dropLng) {
 
         System.out.println(
-                "CREATE_RIDE req -> riderId=" + userId
+                "CREATE_RIDE req -> userId=" + userId
                         + ", pickup=(" + pickupLat + "," + pickupLng + ")"
                         + ", drop=(" + dropLat + "," + dropLng + ")"
         );

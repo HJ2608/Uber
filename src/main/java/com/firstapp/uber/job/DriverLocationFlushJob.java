@@ -23,7 +23,7 @@ public class DriverLocationFlushJob {
         this.driverLocationRepo = driverLocationRepo;
     }
 
-    @Scheduled(fixedRate = 5 * 60 * 1000)
+    @Scheduled(fixedRate = 10 * 1000)
     public void flushLocationsToDb() {
         for (int i = 0; i < 5000; i++) { // safety bound
             String idStr = redis.opsForSet().pop(DIRTY_SET);

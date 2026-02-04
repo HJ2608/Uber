@@ -159,4 +159,9 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
     WHERE r.id = :rideId
 """)
     RideDetail getRideSummary(@Param("rideId") Integer rideId);
+
+    Optional<Ride> findTopByDriverIdAndStatusOrderByStartedOnDesc(
+            Integer driverId,
+            Status status
+    );
 }
