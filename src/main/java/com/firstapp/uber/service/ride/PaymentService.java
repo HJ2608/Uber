@@ -4,10 +4,12 @@ import com.firstapp.uber.dto.ride.Ride;
 import com.firstapp.uber.repository.ride.RideRepo;
 import com.firstapp.uber.repository.ride.RideRepository;
 import com.firstapp.uber.service.driverledger.DriverLedgerService;
+import com.firstapp.uber.websocket.controller.WebSocketController;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import model.PaymentStatus;
 import model.Status;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -20,15 +22,18 @@ public class PaymentService {
     private final RideRepo rideRepo;
     private final DriverLedgerService ledgerService;
     private final RideRepository rideRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public PaymentService(
             RideRepo rideRepo,
             DriverLedgerService ledgerService,
-            RideRepository rideRepository
+            RideRepository rideRepository,
+            SimpMessagingTemplate messagingTemplate
     ) {
         this.rideRepo = rideRepo;
         this.ledgerService = ledgerService;
         this.rideRepository = rideRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -53,6 +58,12 @@ public class PaymentService {
         ride.setEndedOn(LocalDateTime.now());
 
         rideRepository.save(ride);
+
+        messagingTemplate.convertAndSend(
+                "/topic/ride/" + rideId,
+                new WebSocketController.RideStatusBroadcast(rideId, "PAYMENT_COMPLETED", ride.getDriverId())
+        );
+
 
         ledgerService.createLedgerEntry(ride);
 

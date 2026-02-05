@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.List;
 
 @Controller
 public class WebSocketController {
@@ -47,9 +48,13 @@ public class WebSocketController {
         this.rideRepository = rideRepository;
     }
 
+    public record RideStatusBroadcast(Integer rideId, String status, Integer driverId) {}
+
 
     @MessageMapping("/driver/ride/response")
     public void driverResponse(DriverResponse response, Principal principal) {
+
+
         System.out.println("driverResponse is called!! response=" + response);
 
         System.out.println("accepted=" + response.accepted() + " rideId=" + response.rideId());
@@ -75,6 +80,15 @@ public class WebSocketController {
         try {
             System.out.println("Inside try block of driverResponse");
             Ride ride = rideService.handleDriverResponse(response,driverId);
+
+            messagingTemplate.convertAndSend(
+                    "/topic/ride/" + ride.getRideId(),
+                    new RideStatusBroadcast(
+                            ride.getRideId(),
+                            "ASSIGNED",
+                            driverId
+                    )
+            );
 
             String driverPrincipal =
                     webSocketSessionRegistry.principalName(driverId);
@@ -127,9 +141,13 @@ public class WebSocketController {
         driverLocationRedisRepo.upsertLocation(driverId, update.lat(), update.lng());
 
 
+        Ride ride = rideRepository.findTopByDriverIdAndStatusInOrderByStartedOnDesc(
+                driverId,
+                List.of(Status.ASSIGNED, Status.ONGOING)
+        ).orElse(null);
 
-        Ride ride = rideRepository.findTopByDriverIdAndStatusOrderByStartedOnDesc(driverId, Status.ONGOING)
-                .orElse(null);
+//        Ride ride = rideRepository.findTopByDriverIdAndStatusOrderByStartedOnDesc(driverId, Status.ONGOING)
+//                .orElse(null);
 
         if(ride == null){
             System.out.println("ride is null, no broadcast yet ");

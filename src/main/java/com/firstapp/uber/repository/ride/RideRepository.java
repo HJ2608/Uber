@@ -164,4 +164,8 @@ public interface RideRepository extends JpaRepository<Ride, Integer> {
             Integer driverId,
             Status status
     );
+    Optional<Ride> findTopByDriverIdAndStatusInOrderByStartedOnDesc(
+            Integer driverId,
+            List<Status> statuses
+    );
 }

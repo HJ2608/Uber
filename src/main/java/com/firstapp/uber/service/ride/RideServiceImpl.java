@@ -28,12 +28,14 @@ import com.firstapp.uber.service.driver.DriverNotificationService;
 import com.firstapp.uber.service.driverledger.DriverLedgerService;
 import com.firstapp.uber.service.google.GoogleMapsService;
 import com.firstapp.uber.service.otp.OtpService;
+import com.firstapp.uber.websocket.controller.WebSocketController;
 import com.firstapp.uber.websocket.registry.WebSocketSessionRegistry;
 import jakarta.transaction.Transactional;
 import model.PaymentStatus;
 import model.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -63,6 +65,7 @@ public class RideServiceImpl implements RideService{
     private final DriverRepository driverRepository;
     private final PaymentProducer paymentProducer;
     private final KafkaTemplate<String, PaymentSuccessEvent> kafkaTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public RideServiceImpl(RideRepo rideRepo,
                            GoogleMapsService googleMapsService,
@@ -78,7 +81,8 @@ public class RideServiceImpl implements RideService{
                            DriverLocationRedisRepo redisRepo,
                            DriverRepository driverRepository,
                            PaymentProducer paymentProducer,
-                           KafkaTemplate<String, PaymentSuccessEvent> kafkaTemplate) {
+                           KafkaTemplate<String, PaymentSuccessEvent> kafkaTemplate,
+                           SimpMessagingTemplate messagingTemplate) {
 
         this.rideRepo = rideRepo;
         this.googleMapsService = googleMapsService;
@@ -95,6 +99,8 @@ public class RideServiceImpl implements RideService{
         this.driverRepository = driverRepository;
         this.paymentProducer = paymentProducer;
         this.kafkaTemplate = kafkaTemplate;
+        this.messagingTemplate = messagingTemplate;
+
     }
 
     private static final BigDecimal GRACE_PERCENT = new BigDecimal("0.15");
@@ -254,6 +260,16 @@ public class RideServiceImpl implements RideService{
         }
 
         int updated = rideRepo.startRide(match.get().getOtpId());
+
+        Ride ride = rideRepo.findById(rideId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Ride not found: " + rideId));
+
+        messagingTemplate.convertAndSend(
+                "/topic/ride/" + ride.getRideId(),
+                new WebSocketController.RideStatusBroadcast(ride.getRideId(), "ONGOING", ride.getDriverId())
+        );
+
         return updated > 0;
     }
 
@@ -332,6 +348,11 @@ public class RideServiceImpl implements RideService{
         ride.setStatus(Status.COMPLETED);
 
         rideRepository.save(ride);
+
+        messagingTemplate.convertAndSend(
+                "/topic/ride/" + rideId,
+                new WebSocketController.RideStatusBroadcast(rideId, "COMPLETED", ride.getDriverId())
+        );
 
         return rideRepo.endRide(rideId);
     }
